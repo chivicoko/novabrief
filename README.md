@@ -3,8 +3,8 @@
 <div align="center">
   <br />
   <a href="https://youtu.be/ugxI1o5SyMs" target="_blank">
-    <img width="1280" height="720" alt="Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of 10,000 REACT COMPONENTS (2)" src="https://github.com/user-attachments/assets/07311922-ae83-42a1-99c7-cfd243ebbe2c" />
-
+    <img width="1280" height="720" alt="Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of 10,000 REACT COMPONENTS (2)" src="/novabrief2.png" />
+    <!-- https://github.com/user-attachments/assets/07311922-ae83-42a1-99c7-cfd243ebbe2c -->
   </a>
   <br />
   <div>
@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/-Inngest-6366F1?style=for-the-badge&logo=inngest&logoColor=white" alt="Inngest" />
     <img src="https://img.shields.io/badge/-TailwindCSS-06B6D4?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS" />
   </div>
-  <h3 align="center">Build a Personalized AI Newsletter SaaS with Next.js, Supabase, OpenAI & Inngest</h3>
+  <h3 align="center">Personalized AI Newsletter SaaS with Next.js, Supabase, OpenAI, Stripe & Inngest</h3>
   <div align="center">
     Follow the full video tutorial on  
     <a href="https://youtu.be/YOUR_VIDEO_ID" target="_blank"><b>YouTube</b></a>
@@ -168,13 +168,48 @@ BEFORE UPDATE ON public.user_preferences
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 ```
 
+````sql
+-- =========================================================
+-- User Subscriptions Table
+-- =========================================================
+create table public.subscriptions (
+id uuid primary key default gen_random_uuid(),
+user_id uuid not null references auth.users(id) on delete cascade,
+status text not null default 'inactive',
+stripe_customer_id text,
+stripe_subscription_id text,
+stripe_price_id text,
+current_period_start timestamptz,
+current_period_end timestamptz,
+cancel_at_period_end boolean default false,
+created_at timestamptz default now(),
+updated_at timestamptz default now()
+);
+
+create index on public.subscriptions(user_id);
+
+alter table public.subscriptions enable row level security;
+
+create policy "Users can view own subscription"
+on public.subscriptions for select
+using (auth.uid() = user_id);
+
+ALTER TABLE public.subscriptions ADD CONSTRAINT subscriptions_user_id_unique UNIQUE (user_id);
+
+-- Allow service role to do everything (for webhook writes)
+create policy "Service role full access"
+on public.subscriptions
+using (true)
+with check (true);
+```
+
 ### Clone and Run
 
 ```bash
 git clone https://github.com/yourusername/novabrief.git
 cd novabrief
 pnpm install
-```
+````
 
 1. Copy `env.example` to `.env.local` and fill in your API credentials:
 
