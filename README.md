@@ -3,7 +3,7 @@
 <div align="center">
   <br />
   <a href="https://youtu.be/ugxI1o5SyMs" target="_blank">
-    <img width="1280" height="720" alt="Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of 10,000 REACT COMPONENTS (2)" src="/novabrief2.png" />
+    <img width="1280" height="720" alt="Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of Copy of 10,000 REACT COMPONENTS (2)" src="./public/novabrief2.png" />
     <!-- https://github.com/user-attachments/assets/07311922-ae83-42a1-99c7-cfd243ebbe2c -->
   </a>
   <br />
