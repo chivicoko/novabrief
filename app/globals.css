@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0c0f;
+  --bg-secondary: #111318;
+  --bg-card: #151820;
+  --bg-elevated: #1c2030;
+  --border: #252a38;
+  --border-bright: #303550;
+  --accent: #00d4aa;
+  --accent-dim: #00a885;
+  --accent-glow: rgba(0, 212, 170, 0.15);
+  --accent-2: #7b5ea7;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8890a8;
+  --text-muted: #545c74;
+  --danger: #ff4f6a;
+  --warning: #f5a623;
+  --success: #00d4aa;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  min-height: 100vh;
+}
+
+body {
+  background-image: 
+    radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.03) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 10%, rgba(123, 94, 167, 0.04) 0%, transparent 50%);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+/* Focus */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection { background: var(--accent); color: var(--bg-primary); }
+
+/* Animations */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 20px 4px var(--accent-glow); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in { animation: fadeSlideIn 0.5s ease forwards; }
+.animate-fade-in-delay-1 { animation: fadeSlideIn 0.5s ease 0.1s both; }
+.animate-fade-in-delay-2 { animation: fadeSlideIn 0.5s ease 0.2s both; }
+.animate-fade-in-delay-3 { animation: fadeSlideIn 0.5s ease 0.3s both; }
