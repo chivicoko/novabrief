@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     switch (frequency) {
       case "daily":
         // Schedule for tomorrow at 9 AM
-        // scheduleTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        scheduleTime = new Date(now.getTime() + 100);
+        scheduleTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        // scheduleTime = new Date(now.getTime() + 100);
         scheduleTime.setHours(9, 0, 0, 0);
         break;
       case "weekly":
@@ -88,11 +88,10 @@ export async function POST(request: NextRequest) {
       name: "newsletter.schedule",
       data: {
         userId: user.id,
-        email: email,
+        email: email || user.email,
         categories: categories,
         frequency: frequency,
-        scheduledFor: scheduleTime.toISOString(),
-        isTest: true,
+        isTest: false,
       },
     });
 
@@ -201,7 +200,7 @@ async function cancelUserNewsletterEvents(userId: string) {
     // Filter events for this user that are newsletter.schedule events
     const userNewsletterEvents =
       events.data?.filter(
-        (event: any) =>
+        (event: { name: string; data?: { userId?: string } }) =>
           event.name === "newsletter.schedule" && event.data?.userId === userId,
       ) || [];
 
@@ -284,7 +283,7 @@ async function rescheduleUserNewsletter(userId: string) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const supabase = await createClient();
 
   // Get the user session

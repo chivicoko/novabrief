@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   const origin = request.headers.get("origin");
-  // const origin = "http://localhost:3001";
+  // const origin = "http://localhost:3000";
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     mode: "subscription",
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     success_url: `${origin}/select`,
     cancel_url: `${origin}/subscribe`,
-    // cancel_url: `http://localhost:3001/subscribe`,
+    // cancel_url: `http://localhost:3000/subscribe`,
     customer_email: email,
   });
 

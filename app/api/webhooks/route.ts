@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe"; // your Stripe client
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -9,14 +9,17 @@ export async function POST(req: NextRequest) {
   const payload = await req.text();
   const sig = req.headers.get("stripe-signature")!;
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Unknown webhook error";
+
     return NextResponse.json(
-      { error: `Webhook error: ${err.message}` },
+      { error: `Webhook error: ${message}` },
       { status: 400 },
     );
   }

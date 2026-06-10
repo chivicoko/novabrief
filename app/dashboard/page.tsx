@@ -342,7 +342,7 @@ export default function DashboardPage() {
                 </h2>
 
                 <button
-                  onClick={() => router.push("/select")}
+                  onClick={() => router.push("/select?md=update")}
                   style={{
                     width: "100%",
                     padding: "11px 16px",

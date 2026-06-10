@@ -81,7 +81,7 @@ export default function SubscribePage() {
     setIsLoading(true);
     try {
       const selectedPlan = availablePlans.find((p) => p.id === selectedPlanId);
-
+      console.log("selectedPlanId: ", selectedPlanId);
       // Free plan — go directly to preferences
       if (selectedPlan?.isFree) {
         router.push("/select?plan=free");

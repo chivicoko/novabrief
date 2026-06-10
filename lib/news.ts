@@ -3,7 +3,7 @@
  * Returns articles from the past week, limited to 5 per category
  */
 export async function fetchArticles(
-  categories: string[]
+  categories: string[],
 ): Promise<Array<{ title: string; url: string; description: string }>> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -11,31 +11,37 @@ export async function fetchArticles(
     try {
       const response = await fetch(
         `https://newsapi.org/v2/everything?q=${encodeURIComponent(
-          category
-        )}&from=${since}&sortBy=publishedAt&apiKey=${process.env.NEWS_API_KEY}`
+          category,
+        )}&from=${since}&sortBy=publishedAt&apiKey=${process.env.NEWS_API_KEY}`,
       );
 
+      // console.log("response: ", response);
       if (!response.ok) {
         console.error(
           `Failed to fetch news for category ${category}:`,
-          response.statusText
+          response.statusText,
         );
         return [];
       }
 
       const data = await response.json();
+      // console.log("Fetched News: ", data);
 
       if (data.status === "error") {
         console.error(`News API error for category ${category}:`, data.message);
         return [];
       }
 
-      return data.articles.slice(0, 5).map((article: any) => ({
-        title: article.title || "No title",
-        url: article.url || "#",
-        description: article.description || "No description available",
-      }));
-    } catch (error) {
+      return data.articles
+        .slice(0, 5)
+        .map(
+          (article: { title: string; url: string; description: string }) => ({
+            title: article.title || "No title",
+            url: article.url || "#",
+            description: article.description || "No description available",
+          }),
+        );
+    } catch (error: unknown) {
       console.error(`Error fetching news for category ${category}:`, error);
       return [];
     }

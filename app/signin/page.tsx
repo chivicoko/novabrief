@@ -42,8 +42,10 @@ export default function SignInPage() {
         if (error) throw error;
         router.push("/dashboard");
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : "An unexpected error occurred",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +131,7 @@ export default function SignInPage() {
             </div>
             <span
               style={{
-                fontSize: "24px",
+                fontSize: "32px",
                 fontWeight: 700,
                 letterSpacing: "-0.5px",
               }}
@@ -137,7 +139,7 @@ export default function SignInPage() {
               Nova<span style={{ color: "var(--accent)" }}>Brief</span>
             </span>
           </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: "18px" }}>
             {isSignUp
               ? "Create your account to get started"
               : "Sign in to your briefing hub"}
@@ -162,7 +164,7 @@ export default function SignInPage() {
                 border: "1px solid rgba(255, 79, 106, 0.3)",
                 borderRadius: "8px",
                 color: "var(--danger)",
-                fontSize: "13px",
+                fontSize: "15px",
               }}
             >
               {error}
@@ -177,7 +179,7 @@ export default function SignInPage() {
                 border: "1px solid rgba(0, 212, 170, 0.3)",
                 borderRadius: "8px",
                 color: "var(--accent)",
-                fontSize: "13px",
+                fontSize: "15px",
               }}
             >
               {message}
@@ -192,7 +194,7 @@ export default function SignInPage() {
               <label
                 style={{
                   display: "block",
-                  fontSize: "12px",
+                  fontSize: "14px",
                   fontWeight: 500,
                   color: "var(--text-secondary)",
                   marginBottom: "8px",
@@ -224,7 +226,7 @@ export default function SignInPage() {
               <label
                 style={{
                   display: "block",
-                  fontSize: "12px",
+                  fontSize: "14px",
                   fontWeight: 500,
                   color: "var(--text-secondary)",
                   marginBottom: "8px",
@@ -263,7 +265,7 @@ export default function SignInPage() {
                 border: "none",
                 borderRadius: "8px",
                 color: isLoading ? "var(--text-muted)" : "var(--bg-primary)",
-                fontSize: "14px",
+                fontSize: "16px",
                 fontWeight: 600,
                 fontFamily: "var(--font-display)",
                 cursor: isLoading ? "not-allowed" : "pointer",
@@ -279,7 +281,16 @@ export default function SignInPage() {
             </button>
           </form>
 
-          <div style={{ textAlign: "center", marginTop: "20px" }}>
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "20px",
+              fontSize: "16px",
+              fontFamily: "var(--font-display)",
+              background: "none",
+            }}
+          >
+            {isSignUp ? "Already have an account? " : "No account yet? "}
             <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
@@ -287,17 +298,12 @@ export default function SignInPage() {
                 setMessage(null);
               }}
               style={{
-                background: "none",
                 border: "none",
                 cursor: "pointer",
                 color: "var(--accent)",
-                fontSize: "13px",
-                fontFamily: "var(--font-display)",
               }}
             >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "No account yet? Sign up"}
+              {isSignUp ? "Sign in" : "Sign up"}
             </button>
           </div>
         </div>

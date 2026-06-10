@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Inngest } from "inngest";
-import { inngest } from "@/inngest/client";
+// import { Inngest } from "inngest";
+// import { inngest } from "@/inngest/client";
 
 const INNGEST_API = "http://localhost:8288/v1";
 
@@ -8,9 +8,10 @@ const INNGEST_API = "http://localhost:8288/v1";
 async function getRuns(eventId: string) {
   const res = await fetch(`${INNGEST_API}/events/${eventId}/runs`, {
     headers: {
-      Authorization: `Bearer ${process.env.INGGEST_SIGNING_KEY}`,
+      Authorization: `Bearer ${process.env.INNGEST_SIGNING_KEY}`,
     },
   });
+  console.log("Inngest Runs List: ", res);
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Inngest list-runs error: ${err}`);
@@ -21,7 +22,7 @@ async function getRuns(eventId: string) {
 
 /** Poll until the first run is Completed/Failed/Cancelled */
 async function getRunOutput(eventId: string) {
-  let runs = await getRuns(eventId);
+  const runs = await getRuns(eventId);
   if (!runs.length) {
     throw new Error("No runs found for event");
   }
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     const run = await getRunOutput(eventId);
+    console.log("Inngest Run Output: ", run);
 
     // Map Inngest run.status to your client statuses
     let status: "fetching" | "summarizing" | "completed" | "error" = "fetching";
@@ -63,8 +65,12 @@ export async function GET(request: NextRequest) {
       result: run.output,
       error: run.output?.error || undefined,
     });
-  } catch (e: any) {
-    console.error("Error in status route:", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json(
+      {
+        error: e instanceof Error ? e.message : "Internal server error",
+      },
+      { status: 500 },
+    );
   }
 }

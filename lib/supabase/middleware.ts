@@ -1,3 +1,4 @@
+import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -14,8 +15,14 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: Partial<ResponseCookie>;
+          }[],
+        ) {
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({
@@ -42,8 +49,9 @@ export async function updateSession(request: NextRequest) {
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/signin") &&
-    !request.nextUrl.pathname.startsWith("/subscribe") &&
+    !request.nextUrl.pathname.startsWith("/api/inngest") &&
     !request.nextUrl.pathname.startsWith("/api/webhooks")
+    // !request.nextUrl.pathname.startsWith("/subscribe")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
@@ -56,6 +64,14 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname.startsWith("/select") ||
       request.nextUrl.pathname.startsWith("/dashboard"))
   ) {
+    // Skip subscription check for free plan users going to /select
+    if (
+      request.nextUrl.pathname.startsWith("/select") &&
+      request.nextUrl.searchParams.get("plan") === "free"
+    ) {
+      return supabaseResponse;
+    }
+
     try {
       const res = await fetch(
         new URL("/api/subscription-status", request.url),

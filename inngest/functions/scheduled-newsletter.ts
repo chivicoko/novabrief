@@ -2,7 +2,8 @@ import { inngest } from "@/inngest/client";
 import { fetchArticles } from "@/lib/news";
 import emailjs from "@emailjs/nodejs";
 import { marked } from "marked";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default inngest.createFunction(
   { id: "newsletter/scheduled" },
@@ -11,7 +12,7 @@ export default inngest.createFunction(
     try {
       // 0️⃣ Check if user's newsletter is still active
       const isUserActive = await step.run("check-user-status", async () => {
-        const supabase = await createClient();
+        const supabase = createAdminClient();
         const { data, error } = await supabase
           .from("user_preferences")
           .select("is_active")
@@ -39,57 +40,59 @@ export default inngest.createFunction(
         };
       }
 
+      console.log("About to get allArticles...");
+
       // 1️⃣ Fetch articles per category
       const allArticles = await step.run("fetch-news", async () => {
         console.log(
-          `Fetching articles for categories: ${event.data.categories.join(
-            ", ",
-          )}`,
+          `Fetching articles for categories: ${event.data.categories.join(", ")}`,
         );
         return fetchArticles(event.data.categories);
       });
 
-      // 2️⃣ Generate AI summary
-      const summary = await step.ai.infer("summarize-news", {
-        model: step.ai.models.openai({ model: "gpt-4o" }),
-        body: {
-          messages: [
-            {
-              role: "system",
-              content: `You are an expert newsletter editor creating a personalized newsletter. 
-              Write a concise, engaging summary that:
-              - Highlights the most important stories
-              - Provides context and insights
-              - Uses a friendly, conversational tone
-              - Is well-structured with clear sections
-              - Keeps the reader informed and engaged
-              Format the response as a proper newsletter with a title and organized content.
-              Make it email-friendly with clear sections and engaging subject lines.`,
-            },
-            {
-              role: "user",
-              content: `Create a newsletter summary for these articles from the past week. 
-              Categories requested: ${event.data.categories.join(", ")}
-              
-              Articles:
-              ${allArticles
-                .map(
-                  (article: any, index: number) =>
-                    `${index + 1}. ${article.title}\n   ${
-                      article.description
-                    }\n   Source: ${article.url}\n`,
-                )
-                .join("\n")}`,
-            },
-          ],
-        },
+      // 2️⃣ Generate AI summary via Gemini 2.5 Flash
+      const newsletterContent = await step.run("summarize-news", async () => {
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+          throw new Error("GEMINI_API_KEY environment variable is not set");
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: `You are an expert newsletter editor creating a personalized newsletter.
+Write a concise, engaging summary that:
+- Highlights the most important stories
+- Provides context and insights
+- Uses a friendly, conversational tone
+- Is well-structured with clear sections
+- Keeps the reader informed and engaged
+Format the response as a proper newsletter with a title and organized content.
+Make it email-friendly with clear sections and engaging subject lines.`,
+        });
+
+        const prompt = `Create a newsletter summary for these articles from the past week.
+Categories requested: ${event.data.categories.join(", ")}
+
+Articles:
+${allArticles
+  .map(
+    (article: any, idx: number) =>
+      `${idx + 1}. ${article.title}\n   ${article.description}\n   Source: ${article.url}\n`,
+  )
+  .join("\n")}`;
+
+        const result = await model.generateContent(prompt);
+        const content = result.response.text();
+
+        if (!content) {
+          throw new Error("Failed to generate newsletter content from Gemini");
+        }
+
+        console.log("Generated newsletter content successfully");
+        return content;
       });
-
-      const newsletterContent = summary.choices[0].message.content;
-
-      if (!newsletterContent) {
-        throw new Error("Failed to generate newsletter content");
-      }
 
       // Convert markdown to HTML for email
       const htmlContent = marked(newsletterContent);
@@ -104,13 +107,15 @@ export default inngest.createFunction(
           current_date: new Date().toLocaleDateString(),
         };
 
-        // You'll need to set up EmailJS with your service ID, template ID, and public key
         const serviceId = process.env.EMAILJS_SERVICE_ID;
         const templateId = process.env.EMAILJS_TEMPLATE_ID;
         const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+        const privateKey = process.env.EMAILJS_PRIVATE_KEY;
 
-        if (!serviceId || !templateId || !publicKey) {
-          throw new Error("EmailJS configuration missing");
+        if (!serviceId || !templateId || !publicKey || !privateKey) {
+          throw new Error(
+            "EmailJS configuration missing (check EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY, EMAILJS_PRIVATE_KEY)",
+          );
         }
 
         try {
@@ -120,6 +125,7 @@ export default inngest.createFunction(
             templateParams,
             {
               publicKey: publicKey,
+              privateKey: privateKey,
             },
           );
 
@@ -139,8 +145,7 @@ export default inngest.createFunction(
 
           switch (event.data.frequency) {
             case "daily":
-              nextScheduleTime = new Date(now.getTime() + 60 * 1000);
-              // nextScheduleTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+              nextScheduleTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
               break;
             case "weekly":
               nextScheduleTime = new Date(
@@ -160,7 +165,6 @@ export default inngest.createFunction(
 
           nextScheduleTime.setHours(9, 0, 0, 0);
 
-          // Schedule the next newsletter
           await inngest.send({
             name: "newsletter.schedule",
             data: {
@@ -179,17 +183,15 @@ export default inngest.createFunction(
         });
       }
 
-      const result = {
+      return {
         newsletter: newsletterContent,
         articleCount: allArticles.length,
         categories: event.data.categories,
         emailSent: true,
-        nextScheduled: true,
+        nextScheduled: !event.data.isTest,
         success: true,
         runId: runId,
       };
-
-      return result;
     } catch (error) {
       console.error("Scheduled newsletter generation failed:", error);
       throw error;

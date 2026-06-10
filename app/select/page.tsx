@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -60,8 +60,8 @@ const allCategories = [
 const FREE_CATEGORY_LIMIT = 4;
 
 const frequencyOptions = [
-  { id: "weekly", name: "Weekly", description: "Every week", icon: "📅" },
   { id: "daily", name: "Daily", description: "Every day", icon: "☀️" },
+  { id: "weekly", name: "Weekly", description: "Every week", icon: "📅" },
   {
     id: "biweekly",
     name: "Bi-weekly",
@@ -105,6 +105,7 @@ export default function SelectPage() {
   const { user } = useAuth();
 
   const isFreePlan = searchParams.get("plan") === "free";
+  const isUpdate = searchParams.get("md") === "update";
 
   const handleCategoryToggle = (categoryId: string, idx: number) => {
     // Free users can only select the first FREE_CATEGORY_LIMIT categories
@@ -146,6 +147,38 @@ export default function SelectPage() {
       setIsSaving(false);
     }
   };
+
+  // const handleUpdatePreferences = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (selectedCategories.length === 0) {
+  //     alert("Please select at least one category");
+  //     return;
+  //   }
+  //   if (!user) {
+  //     alert("Please sign in to continue");
+  //     return;
+  //   }
+
+  //   setIsSaving(true);
+  //   try {
+  //     const response = await fetch("/api/user-preferences", {
+  //       method: "PATCH",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         categories: selectedCategories,
+  //         frequency: selectedFrequency,
+  //         email: user.email,
+  //       }),
+  //     });
+  //     if (!response.ok) throw new Error("Failed to save preferences");
+  //     router.push("/dashboard");
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     alert("Failed to save preferences. Please try again.");
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   const cardBase = {
     padding: "16px 18px",
@@ -225,6 +258,7 @@ export default function SelectPage() {
         </div>
 
         <form
+          // onSubmit={isUpdate ? handleUpdatePreferences : handleSavePreferences}
           onSubmit={handleSavePreferences}
           style={{ display: "flex", flexDirection: "column", gap: "36px" }}
         >
