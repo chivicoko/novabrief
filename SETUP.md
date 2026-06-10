@@ -1,121 +1,131 @@
-# Quick Setup Guide
+# NovaBrief — Setup Reference
 
-use npm or pnpm depending on which package manage you prefer
+Condensed setup guide. For full context on architecture decisions and known constraints, see `README.md`.
 
-## 1. Install Dependencies
+---
 
-```bash
-npm install
-```
-
-or
+## 1. Install
 
 ```bash
 pnpm install
+# or: npm install
 ```
 
-## 2. Set Up Environment Variables
+---
 
-Copy the example file and add your API keys:
+## 2. Environment Variables
 
 ```bash
 cp env.example .env.local
 ```
 
-Edit `.env.local` and add your API keys:
+Fill in `.env.local`. The ones that will bite you if wrong:
 
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-INNGEST_SIGNING_KEY=your_inngest_signing_key_here
-NEWS_API_KEY=your_news_api_key_here
-```
+| Variable | Common mistake |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Using anon key here — Inngest functions and Stripe webhook will fail silently |
+| `INNGEST_SIGNING_KEY` | Leave commented out locally — breaks dev server signature validation |
+| `INNGEST_EVENT_KEY` | Required in production for `inngest.send()` to authenticate |
+| `EMAILJS_PRIVATE_KEY` | Missing this breaks Node.js sends even if public key is correct |
+| `NEWS_API_KEY` | After renaming from `NEXT_PUBLIC_`, restart the dev server or it stays undefined |
+| `NEXT_PUBLIC_APP_URL` | Set to production domain before deploying — affects OG tags and metadataBase |
 
-## 3. Get API Keys
+---
 
-### OpenAI API Key
+## 3. Supabase
 
-1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Create a new API key
-3. Add it to `.env.local`
+Run both SQL blocks from `README.md` → Database Setup in your Supabase SQL editor. Then:
 
-### News API Key
+- Project Settings → API → copy `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+- Auth → URL Configuration → add `http://localhost:3000` to redirect URLs
 
-1. Go to [NewsAPI.org](https://newsapi.org/register)
-2. Sign up for a free account
-3. Get your API key
-4. Add it to `.env.local`
+---
 
-### Inngest Signing Key
+## 4. EmailJS
 
-1. Go to [Inngest Cloud](https://cloud.inngest.com/)
-2. Create a free account
-3. Create a new app
-4. Get your signing key
-5. Add it to `.env.local`
+1. Create a service (Gmail/Outlook/etc.) at [dashboard.emailjs.com](https://dashboard.emailjs.com)
+2. Create a template. Required variable mappings:
+   - **To Email**: `{{to_email}}`
+   - **Body**: `{{{newsletter_content}}}` (triple braces for HTML rendering)
+   - Also available: `{{categories}}`, `{{article_count}}`, `{{current_date}}`
+3. Account → Security → enable **"Allow ServerSide (Node.js) requests"**
+4. Copy Service ID, Template ID, Public Key, Private Key → `.env.local`
 
-## 4. Run the Application
+---
 
-### Option A: Run Both Servers (Recommended)
+## 5. Gemini
 
-```bash
-npm run dev:all
-```
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Create an API key (free tier, no billing required)
+3. Add to `.env.local` as `GEMINI_API_KEY`
 
-or
+---
 
-```bash
-pnpm dev:all
-```
-
-### Option B: Run Servers Separately
-
-Terminal 1:
+## 6. Stripe (local)
 
 ```bash
-npm run dev
+# Install Stripe CLI if not already: https://stripe.com/docs/stripe-cli
+stripe login
+stripe listen --forward-to localhost:3000/api/webhooks
 ```
 
-or
+The CLI outputs a webhook signing secret — use that as `STRIPE_WEBHOOK_SECRET`. It changes each time you run `stripe listen`.
+
+Create your products in the Stripe dashboard (test mode), copy the Price IDs to `STRIPE_MONTHLY_PRICE_ID` and `STRIPE_YEARLY_PRICE_ID`.
+
+---
+
+## 7. Running
+
+Three terminals:
 
 ```bash
+# 1 — App
 pnpm dev
 
+# 2 — Inngest dev server
+pnpm dlx inngest-cli dev -u http://localhost:3000/api/inngest
+
+# 3 — Stripe webhook forwarding
+stripe listen --forward-to localhost:3000/api/webhooks
 ```
 
-Terminal 2:
+Verify:
 
 ```bash
-npx inngest dev
+curl http://localhost:3000/api/inngest
+# Must return JSON, not a redirect. If redirected → check middleware whitelist.
 ```
 
-or
+Inngest UI → `http://localhost:8288` → Apps tab → app should be synced with `newsletter/scheduled` listed.
+
+---
+
+## 8. PWA Icons
+
+The `public/icons/` directory needs actual PNG files before the PWA installs correctly. Generate them from your logo:
 
 ```bash
-pnpm dlx inngest-cli dev
+pnpm add -D sharp
+node -e "
+const sharp = require('sharp');
+[72,96,128,144,152,192,384,512].forEach(s =>
+  sharp('public/novabrief2.png').resize(s,s).toFile('public/icons/icon-' + s + 'x' + s + '.png')
+);
+"
 ```
 
-## 5. Access the Application
+---
 
-- **Demo Page**: http://localhost:3000 (shows UI without API keys)
-- **Full App**: http://localhost:3000/select (requires API keys)
-- **Inngest Dev UI**: http://localhost:8288
+## 9. Deploy to Vercel
 
-## 6. Test the Application
+```bash
+vercel --prod
+```
 
-1. Visit http://localhost:3000 to see the demo
-2. Go to http://localhost:3000/select to use the full version
-3. Select categories and generate a newsletter
-4. Watch the real-time progress on the newsletter page
-
-## Troubleshooting
-
-- **"Module not found" errors**: Run `npm install` or `pnpm install`
-- **API key errors**: Check your `.env.local` file
-- **Inngest connection issues**: Make sure `npx inngest dev` or `pnpm dlx inngest-cli dev` is running
-- **News API rate limits**: Free tier has 1000 requests/day limit
-
-## Next Steps
-
-- Customize the AI prompts in `inngest/functions/newsletter.ts`
-- Add more categories in `app/select/page.tsx`
-- Deploy to Vercel for production use
+Post-deploy:
+1. Add all env vars to Vercel dashboard (Settings → Environment Variables)
+2. Inngest Cloud → Apps → Add App → `https://yourdomain.com/api/inngest`
+3. Stripe dashboard → Webhooks → Add endpoint → `https://yourdomain.com/api/webhooks` → events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+4. Supabase Auth → URL Configuration → add production domain to Site URL and Redirect URLs
+5. NewsAPI: free tier blocks production server-side requests — upgrade or swap API before launch

@@ -1,0 +1,65 @@
+const CACHE_NAME = 'novabrief-v1';
+
+// Static assets worth caching
+const STATIC_ASSETS = [
+  '/',
+  '/signin',
+  '/subscribe',
+  '/manifest.json',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Never intercept API calls, Inngest, Supabase, or cross-origin requests
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.origin !== self.location.origin ||
+    request.method !== 'GET'
+  ) {
+    return;
+  }
+
+  // Network-first for HTML navigation — always fresh auth state
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (_next/static, fonts, images)
+  if (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|ico|woff2|woff)$/)
+  ) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) => cached || fetch(request).then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          return res;
+        })
+      )
+    );
+    return;
+  }
+});
